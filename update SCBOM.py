@@ -29,7 +29,8 @@ def load():
 
 # search PN and Rev in SCBOM
 def search(df, PN, Rev):
-    df = df.loc[(df["Title"]==PN) & (df["Revision"]==Rev)]
+    # df = df.loc[(df["Title"]==PN) & (df["Revision"]==Rev)]
+    df = df.loc[(df["Title"]==PN)]	# search PN only 
     index = df.index.values
     
     # only one entry found
@@ -49,10 +50,11 @@ def search(df, PN, Rev):
 # copy EBOM info and paste into SCBOM_updated
 def copy_and_paste_row(df1, index1, df2, index2):  # index1 and index2 are int
     # copy df2 info into df1
-    for i in range(len(df2.columns.tolist())):
-        df1.loc[index1, df1.columns.tolist()[i]] = df2.loc[index2, df2.columns.tolist()[i]]
-        
-    return df1
+    # only copy columns that are not on EBOM
+	offset = df2.shape[1]
+	for i in range(offset-1, len(df2.columns.tolist()), 1):
+		df1.loc[index1, df1.columns.tolist()[i]] = df2.loc[index2, df2.columns.tolist()[i]]
+	return df1
 
 # save dataframe to Excel
 def save(df):
@@ -101,24 +103,27 @@ def main():
 	    
 	    #not found, deactivate the part, then append this part to SCBOM_updated
 	    if (index_SCBOM_updated == None):
-	        SCBOM.loc[index, ["Part Active"]] = "Inactivate"
-	        SCBOM.loc[index, ["Part Status"]] = "Removed"
-	        SCBOM.loc[index, ["Last Modified Date"]] = datetime.datetime.now()
-	        SCBOM_updated = SCBOM_updated.append(SCBOM.loc[index], ignore_index=True)
-	        
+	    	SCBOM.loc[index, ["Part Active"]] = "Inactivate"
+	    	SCBOM.loc[index, ["Part Status"]] = "Removed"
+	    	SCBOM.loc[index, ["Last Modified Date"]] = datetime.date.today()
+	    	SCBOM_updated = SCBOM_updated.append(SCBOM.loc[index], ignore_index=True)
 
-	    # found one entry, copy the information to updated SCBOM    
+	   	# found one entry, copy the information to updated SCBOM    
 	    elif (len(index_SCBOM_updated) == 1):
-	        index_SCBOM_updated = index_SCBOM_updated[0]
-	        SCBOM_updated = copy_and_paste_row(SCBOM_updated, index_SCBOM_updated, SCBOM, index)
-	        SCBOM_updated.loc[index_SCBOM_updated, ["Part Creation Date"]] = "9/21/2018"
-	    
+	    	index_SCBOM_updated = index_SCBOM_updated[0]
+	    	SCBOM_updated = copy_and_paste_row(SCBOM_updated, index_SCBOM_updated, SCBOM, index)
+	    	SCBOM_updated.loc[index_SCBOM_updated, ["Part Creation Date"]] = datetime.date(2019, 9, 21)
+	    	SCBOM_updated.loc[index_SCBOM_updated, ["Part Status"]] = "Lateste Revision"
+	    	SCBOM_updated.loc[index_SCBOM_updated, ["Part Active"]] = "Active"
+
 	    # found multiple entries, copy the information to each of the entries in SCBOM_updated
 	    else:
-	        for each in index_SCBOM_updated:
-	            SCBOM_updated = copy_and_paste_row(SCBOM_updated, each, SCBOM, index)
-	            SCBOM_updated.loc[index_SCBOM_updated, ["Part Creation Date"]] = "9/21/2018"	
-
+	    	for each in index_SCBOM_updated:
+                    SCBOM_updated = copy_and_paste_row(SCBOM_updated, each, SCBOM, index)
+                    SCBOM_updated.loc[index_SCBOM_updated, ["Part Creation Date"]] = datetime.date(2019, 9, 21)
+                    SCBOM_updated.loc[index_SCBOM_updated, ["Part Status"]] = "Lateste Revision"
+                    SCBOM_updated.loc[index_SCBOM_updated, ["Part Active"]] = "Active"	
+	    
 	save(SCBOM_updated)
 
 	print("\nAfter Sync")
@@ -126,7 +131,7 @@ def main():
 	print("SCBOM shape: ", SCBOM.shape)
 	print("SCBOM_updated ", SCBOM_updated.shape)
 
-	execution_time = time.time() - start_time
+	execution_time = round(time.time() - start_time, 2)
 	print("\nThis script took--- {} seconds ---".format(execution_time))
 
 
