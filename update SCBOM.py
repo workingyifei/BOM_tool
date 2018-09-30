@@ -1,19 +1,15 @@
 # The script below syncs the supply Chain BOM with Engineering BOM.
 # Created by Yifei.li@byton.com
 
-
-
 import pandas as pd
 import numpy as np
 import xlrd, openpyxl
 import csv, datetime
 import time
 
-
 # put up-to-date EBOM and SCBOM here for sync
 EBOM_PATH = './Data/AA-ZZ000001NN-03_VP BoM_9-21-18 at 3.42 PM.xlsx'
 SCBOM_PATH = './Data/Supply Chain BOM V2 (version 1).xlsx'
-
 
 #load EBOM and SCBOM
 def load():
@@ -25,7 +21,6 @@ def load():
     SCBOM = pd.read_excel(SCBOM_PATH, sheet_name="Supply Chain BOM")
     SCBOM = SCBOM.reset_index(drop=True)
     return EBOM, SCBOM
-
 
 # search PN and Rev in SCBOM
 def search(df, PN, Rev):
@@ -46,7 +41,6 @@ def search(df, PN, Rev):
     else:
         return None
         
-
 # copy EBOM info and paste into SCBOM_updated
 def copy_and_paste_row(df1, index1, df2, index2):  # index1 and index2 are int
     # copy df2 info into df1
@@ -74,7 +68,8 @@ def main():
 
 	# create a updated SCBOM with columns from SCBOM and data from EBOM
 	SCBOM_updated = EBOM.copy()
-	for each in SCBOM.columns.tolist()[15:]:
+	# copy only colums that do not exist in EBOM
+	for each in SCBOM.columns.tolist()[EBOM.shape[1]:]:
 		SCBOM_updated[each] = ""
 
 
@@ -87,6 +82,12 @@ def main():
 	print("EBOM shape: ", EBOM.shape)
 	print("SCBOM shape: ", SCBOM.shape)
 	print("SCBOM_updated ", SCBOM_updated.shape)
+
+
+	# count how many new parts are added
+	# how many old parts are removed
+	removed_parts_count = 0
+	same_parts = 0
 
 
 	# loop through SCBOM 
@@ -105,8 +106,11 @@ def main():
 	    if (index_SCBOM_updated == None):
 	    	SCBOM.loc[index, ["Part Active"]] = "Inactivate"
 	    	SCBOM.loc[index, ["Part Status"]] = "Removed"
-	    	SCBOM.loc[index, ["Last Modified Date"]] = datetime.date.today()
+	    	SCBOM.loc[index, ["Part Creation Date"]] = datetime.date(2019, 9, 14)
+	    	# SCBOM.loc[index, ["Last Modified Date"]] = datetime.date.today()
+	    	SCBOM.loc[index, ["Last Modified Date"]] = datetime.date(2019, 9, 28)
 	    	SCBOM_updated = SCBOM_updated.append(SCBOM.loc[index], ignore_index=True)
+	    	removed_parts_count = removed_parts_count + 1
 
 	   	# found one entry, copy the information to updated SCBOM    
 	    elif (len(index_SCBOM_updated) == 1):
@@ -115,15 +119,17 @@ def main():
 	    	SCBOM_updated.loc[index_SCBOM_updated, ["Part Creation Date"]] = datetime.date(2019, 9, 21)
 	    	SCBOM_updated.loc[index_SCBOM_updated, ["Part Status"]] = "Lateste Revision"
 	    	SCBOM_updated.loc[index_SCBOM_updated, ["Part Active"]] = "Active"
-
-	    # found multiple entries, copy the information to each of the entries in SCBOM_updated
+	    	same_parts = same_parts + 1
+	
+            # found multiple entries, copy the information to each of the entries in SCBOM_updated
 	    else:
 	    	for each in index_SCBOM_updated:
                     SCBOM_updated = copy_and_paste_row(SCBOM_updated, each, SCBOM, index)
                     SCBOM_updated.loc[index_SCBOM_updated, ["Part Creation Date"]] = datetime.date(2019, 9, 21)
                     SCBOM_updated.loc[index_SCBOM_updated, ["Part Status"]] = "Lateste Revision"
-                    SCBOM_updated.loc[index_SCBOM_updated, ["Part Active"]] = "Active"	
-	    
+                    SCBOM_updated.loc[index_SCBOM_updated, ["Part Active"]] = "Active"
+                    same_parts = same_parts + 1
+
 	save(SCBOM_updated)
 
 	print("\nAfter Sync")
@@ -131,9 +137,13 @@ def main():
 	print("SCBOM shape: ", SCBOM.shape)
 	print("SCBOM_updated ", SCBOM_updated.shape)
 
+	print("\n# of new parts added: ", EBOM.shape[0]-same_parts)
+	print("# of old parts removewd: ", removed_parts_count)
+	print("# of additional columns added in EBOM: ", SCBOM_updated.shape[1] - SCBOM.shape[1])
+
 	execution_time = round(time.time() - start_time, 2)
 	print("\nThis script took--- {} seconds ---".format(execution_time))
 
 
 if __name__ == "__main__":
-	main()
+    main()
