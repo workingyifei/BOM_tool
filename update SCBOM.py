@@ -17,9 +17,19 @@ def load():
     EBOM = pd.read_excel(EBOM_PATH, sheet_name="BOM", skiprows=[0])
     EBOM.columns = EBOM.columns.str.replace("\(R\)\ ", "") # trim (R) away from the header
     EBOM = EBOM.reset_index(drop=True)
-    # load Supply Chain BOM
-    SCBOM = pd.read_excel(SCBOM_PATH, sheet_name="Supply Chain BOM")
-    SCBOM = SCBOM.reset_index(drop=True)
+    # load Supply Chain BOM from multiple tabs in an Excel
+    sheet_name = ["A BIW", "B CLOSURES", "C EXTERIOR", "D INTERIOR", "E CHASSIS", "F THERMAL MANAGEMENT", "G DRIVETRAIN",
+    			  "H POWER ELECTRONICS", "J HV BATTERY", "K AUTONOMY", "L LOW VOLTAGE SYSTEMS", "M CONNECTIVITY", "N ICE", 
+    			  "X RAW MATERIALS", "Y FASTENERS", "Z TOP LEVEL"]
+
+    df= pd.read_excel(SCBOM_PATH, sheet_name=sheet_name)
+    SCBOM = pd.DataFrame()
+
+    for each in df:
+    	SCBOM = SCBOM.append(each)
+
+    # reset index of SCBOM
+    SCBOM = SCBOM.reset_index(drop=True, inplace=True)
     return EBOM, SCBOM
 
 # search PN and Rev in SCBOM
@@ -57,7 +67,9 @@ def save(df):
                  decode('utf-8') if isinstance(x, str) else x)
 
     writer = pd.ExcelWriter('Updated Supply Chain BOM.xlsx')
-    df.to_excel(writer, sheet_name="Updated Supply Chain BOM", na_rep="" )
+    for each in sheet_name:
+    	df.to_excel(writer, sheet_name=each, na_rep="")
+    # df.to_excel(writer, sheet_name="Updated Supply Chain BOM", na_rep="" )
     writer.save()
 
 #     df.to_csv("Supply Chain BOM.csv",quoting=csv.QUOTE_NONE, escapechar="\\")
