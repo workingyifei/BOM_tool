@@ -22,29 +22,35 @@ SCBOM_updated_columns_end = 78
 # tab names in supply chain BOM.xlsx and EBOM.xlsx
 system_name = ["A BIW", "B Closures", "C Exterior", "D Interior", "E Chassis", "F Thermal Management", "G Drivetrain",
               "H Power Electronics", "J HV Battery", "K Autonomy", "L Low Voltage Systems", "M Connectivity", 
-              "N Intelligent Car Experience ICE", "X Raw Materials", "Y Fasteners", "Z Vehicle Top Level Cfg"]
+              "N ICE", "X Raw Materials", "Y Fasteners", "Z Vehicle Top Level Cfg"]
 
 #load EBOM and SCBOM
 def load():
-    # load Engineering BOM
-    # EBOM = pd.read_csv(EBOM_PATH)
-    EBOM = pd.read_excel(EBOM_PATH, sheet_name="BOM")
-    # EBOM.columns = EBOM.columns.str.replace("\(R\)\ ", "") # trim (R) away from the header
-    EBOM = EBOM.reset_index(drop=True)
+	# load Engineering BOM
+	# EBOM = pd.read_csv(EBOM_PATH)
+	EBOM = pd.read_excel(EBOM_PATH, sheet_name="BOM")
+	# EBOM.columns = EBOM.columns.str.replace("\(R\)\ ", "") # trim (R) away from the header
 
-#     # load Supply Chain BOM from MULTIPLE tabs in an Excel
-#     df= pd.read_excel(SCBOM_PATH, sheet_name=system_name)
-#     SCBOM = pd.DataFrame()
-#     for each in df:
-#         SCBOM = SCBOM.append(df[each])
+	EBOM.loc[EBOM.System=="N Intelligent Car Experience ICE", "System"]= "N ICE"
+	EBOM = EBOM.reset_index(drop=True)
 
-    # load Supply Chain BOM from SINGLE TAB in an Excel
-    SCBOM= pd.read_excel(SCBOM_PATH, sheet_name="Supply Chain BOM")
+	#     # load Supply Chain BOM from MULTIPLE tabs in an Excel
+	#     df= pd.read_excel(SCBOM_PATH, sheet_name=system_name)
+	#     SCBOM = pd.DataFrame()
+	#     for each in df:
+	#         SCBOM = SCBOM.append(df[each])
 
-    # reset index of SCBOM
-    SCBOM.reset_index(drop=True, inplace=True)
-    print("Completed loading excel files\n")
-    return EBOM, SCBOM
+	# load Supply Chain BOM from SINGLE TAB in an Excel
+	SCBOM= pd.read_excel(SCBOM_PATH, sheet_name="Supply Chain BOM")
+
+	# change column N Intelligent Car Experience ICE to just N ICE
+	# pd.to_excel doesn't allow column name greater than 31 characters
+	SCBOM.loc[SCBOM.System=="N Intelligent Car Experience ICE", "System"]= "N ICE"
+
+	# reset index of SCBOM
+	SCBOM.reset_index(drop=True, inplace=True)
+	print("\nComplete loading excel files\n")
+	return EBOM, SCBOM
 
 # search PN and/or Rev in SCBOM
 def search(df, PN, Rev):
@@ -80,14 +86,15 @@ def save(df):
 	date = str(datetime.date.today())
 	name = "Supply Chain BOM_" + date + ".xlsx"
 	writer = pd.ExcelWriter(name)
+	print("\nStart saving...\n")
 
 	# saving to multiple tabs
 	for each in system_name:
 		system = df[df["System"]==each]
-		print("saving: {}".format(each))
+		print("\rsaving: {}".format(each), end="", flush=True)
 		system.to_excel(writer, sheet_name=each, na_rep="")
 	
-
+	print("\nSaving complete...\n")
 	# # saving to ONE tab
 	# df.to_excel(writer, sheet_name="Updated Supply Chain BOM", na_rep="" )
 
@@ -114,7 +121,7 @@ def main():
 	print("Before Sync")
 	print("EBOM shape: ", EBOM.shape)
 	print("SCBOM shape: ", SCBOM.shape)
-	print("SCBOM_updated ", SCBOM_updated.shape)
+	print("SCBOM_updated: {}\n".format(SCBOM_updated.shape))
 
 
 	# count how many new parts are added
@@ -125,7 +132,7 @@ def main():
 
 	# loop through SCBOM 
 	for index, row in SCBOM.iterrows():
-		print("Updating {} row of Supply Chain BOM ".format(index))
+		print("\rUpdating row # {0} of Supply Chain BOM. Progress: {1}%".format(index, round(index*100/SCBOM.shape[0]), 4), end="", flush=True)
 		PN = row["Title"]
 		Rev = row["Revision"]
 		# same part could be structured differently but the part is the same, 
@@ -172,7 +179,7 @@ def main():
 
 	save(SCBOM_updated)
 
-	print("\nAfter Sync")
+	print("After Sync")
 	print("EBOM shape: ", EBOM.shape)
 	print("SCBOM shape: ", SCBOM.shape)
 	print("SCBOM_updated ", SCBOM_updated.shape)
@@ -189,4 +196,3 @@ def main():
 
 if __name__ == "__main__":
 	main()
-
