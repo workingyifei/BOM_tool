@@ -8,15 +8,21 @@ import csv, datetime
 import time
 
 # put up-to-date EBOM and SCBOM here for sync
-EBOM_PATH = './Data/EBOM_yifei.xlsx'
-SCBOM_PATH = './Data/Supply Chain BOM V2.xlsx'
+EBOM_PATH = './Data/EBOM_10.8.18_addQuan.xlsx'
+SCBOM_PATH = './Data/Copy of Supply Chain BOM_2018-10-03_final.xlsx'
 
 
 # needs to change the followings based on how the EBOM and SCBOM columns are structured 
-SCBOM_columns_start = 15 # SC columns start at column # 15
-SCBOM_columns_end = 79 # SC columns start at column # 15
-EBOM_columns_end = 13 # EBOM columns end at column # 13
-SCBOM_updated_columns_end = SCBOM_columns_end - (SCBOM_columns_start - EBOM_columns_end)
+# 0 index
+SCBOM_columns_start = 14 # SC columns start at column # 15
+SCBOM_columns_end = 78 # SC columns end at column # 77
+SCBOM_updated_columns_start = 14 
+SCBOM_updated_columns_end = 78
+
+# tab names in supply chain BOM.xlsx and EBOM.xlsx
+system_name = ["A BIW", "B Closures", "C Exterior", "D Interior", "E Chassis", "F Thermal Management", "G Drivetrain",
+              "H Power Electronics", "J HV Battery", "K Autonomy", "L Low Voltage Systems", "M Connectivity", 
+              "N Intelligent Car Experience ICE", "X Raw Materials", "Y Fasteners", "Z Vehicle Top Level Cfg"]
 
 #load EBOM and SCBOM
 def load():
@@ -25,19 +31,19 @@ def load():
     EBOM = pd.read_excel(EBOM_PATH, sheet_name="BOM")
     # EBOM.columns = EBOM.columns.str.replace("\(R\)\ ", "") # trim (R) away from the header
     EBOM = EBOM.reset_index(drop=True)
-    # load Supply Chain BOM from multiple tabs in an Excel
-    sheet_name = ["A BIW", "B CLOSURES", "C EXTERIOR", "D INTERIOR", "E CHASSIS", "F THERMAL MANAGEMENT", "G DRIVETRAIN",
-    			  "H POWER ELECTRONICS", "J HV BATTERY", "K AUTONOMY", "L LOW VOLTAGE SYSTEMS", "M CONNECTIVITY", "N ICE", 
-    			  "X RAW MATERIALS", "Y FASTENERS", "Z TOP LEVEL"]
 
-    df= pd.read_excel(SCBOM_PATH, sheet_name=sheet_name)
-    SCBOM = pd.DataFrame()
+#     # load Supply Chain BOM from MULTIPLE tabs in an Excel
+#     df= pd.read_excel(SCBOM_PATH, sheet_name=system_name)
+#     SCBOM = pd.DataFrame()
+#     for each in df:
+#         SCBOM = SCBOM.append(df[each])
 
-    for each in df:
-    	SCBOM = SCBOM.append(each)
+    # load Supply Chain BOM from SINGLE TAB in an Excel
+    SCBOM= pd.read_excel(SCBOM_PATH, sheet_name="Supply Chain BOM")
 
     # reset index of SCBOM
-    SCBOM = SCBOM.reset_index(drop=True, inplace=True)
+    SCBOM.reset_index(drop=True, inplace=True)
+    print("Completed loading excel files\n")
     return EBOM, SCBOM
 
 # search PN and/or Rev in SCBOM
@@ -63,7 +69,7 @@ def search(df, PN, Rev):
 def copy_and_paste_row(df1, index1, df2, index2):  # index1 and index2 are int
     # copy df2 info into df1
     # only copy columns that are not on EBOM
-	df1.loc[index1, df1.columns.tolist()[EBOM_columns_end:SCBOM_updated_columns_end]] = df2.loc[index2, df2.columns.tolist()[SCBOM_columns_start:SCBOM_columns_end]]
+	df1.loc[index1, df1.columns.tolist()[SCBOM_updated_columns_start:SCBOM_updated_columns_end]] = df2.loc[index2, df2.columns.tolist()[SCBOM_columns_start:SCBOM_columns_end]]
 	return df1
 
 # save dataframe to Excel
@@ -74,8 +80,15 @@ def save(df):
 	date = str(datetime.date.today())
 	name = "Supply Chain BOM_" + date + ".xlsx"
 	writer = pd.ExcelWriter(name)
-	for each in sheet_name:
-		df.to_excel(writer, sheet_name=each, na_rep="")
+
+	# saving to multiple tabs
+	for each in system_name:
+		system = df[df["System"]==each]
+		print("saving: {}".format(each))
+		system.to_excel(writer, sheet_name=each, na_rep="")
+	
+
+	# # saving to ONE tab
 	# df.to_excel(writer, sheet_name="Updated Supply Chain BOM", na_rep="" )
 
 	writer.save()
@@ -112,7 +125,7 @@ def main():
 
 	# loop through SCBOM 
 	for index, row in SCBOM.iterrows():
-		print("iterations: {}\t ".format(index))
+		print("Updating {} row of Supply Chain BOM ".format(index))
 		PN = row["Title"]
 		Rev = row["Revision"]
 		# same part could be structured differently but the part is the same, 
@@ -176,3 +189,4 @@ def main():
 
 if __name__ == "__main__":
 	main()
+
